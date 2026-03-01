@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>面试复盘 Agent</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #333; }
+.container { max-width: 860px; margin: 40px auto; padding: 0 20px; }
+h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 8px; }
+.subtitle { color: #666; margin-bottom: 32px; }
+.card { background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+.upload-area { border: 2px dashed #d0d0d0; border-radius: 8px; padding: 40px; text-align: center; }
+.upload-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.upload-text { color: #555; font-size: 0.95rem; margin-bottom: 12px; }
+.file-info { font-size: 0.85rem; color: #888; margin-top: 8px; }
+.selected-file { margin-top: 16px; padding: 10px 14px; background: #f0eeff; border-radius: 6px; font-size: 0.9rem; color: #4f46e5; display: none; }
+.btn { display: block; padding: 12px 28px; background: #4f46e5; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; width: 100%; margin-top: 16px; }
+.btn:hover { background: #4338ca; }
+.btn:disabled { background: #a5a0e8; cursor: not-allowed; }
+.steps { display: flex; gap: 12px; margin-bottom: 24px; }
+.step { flex: 1; padding: 14px; border-radius: 8px; background: #f9f9f9; border: 1px solid #eee; text-align: center; font-size: 0.85rem; color: #999; }
+.step.active { background: #f0eeff; border-color: #c4bfff; color: #4f46e5; font-weight: 600; }
+.step.done { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+.step-num { font-size: 1.2rem; display: block; margin-bottom: 4px; }
+#result { display: none; }
+.transcript-box { background: #f9f9f9; border-radius: 8px; padding: 16px; font-size: 0.88rem; color: #555; line-height: 1.7; max-height: 200px; overflow-y: auto; display: none; margin-top: 16px; }
+.toggle-transcript { font-size: 0.85rem; color: #4f46e5; cursor: pointer; margin-top: 8px; display: none; }
+.error { color: #dc2626; background: #fef2f2; padding: 12px 16px; border-radius: 8px; margin-top: 12px; display: none; }
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.markdown h1 { font-size: 1.1rem; font-weight: 600; margin: 20px 0 16px; color: #1a1a1a; text-align: center; }
+.markdown h2 { font-size: 1.05rem; font-weight: 600; margin: 24px 0 12px; border-bottom: 2px solid #4f46e5; padding-bottom: 6px; color: #1a1a1a; }
+.markdown h3 { font-size: 1rem; font-weight: 600; margin: 18px 0 8px; color: #4f46e5; }
+.markdown p { margin: 0 0 14px 0; line-height: 1.7; color: #555; font-size: 0.88rem; }
+.markdown ul { margin: 8px 0 14px 0; padding-left: 24px; }
+.markdown li { margin: 6px 0; line-height: 1.7; list-style-type: disc; font-size: 0.88rem; color: #555; }
+.markdown blockquote { border-left: 4px solid #4f46e5; color: #555; margin: 12px 0 14px 0; background: #f8f7ff; padding: 12px 16px; border-radius: 4px; font-size: 0.88rem; line-height: 1.7; }
+.markdown code { background: #f3f4f6; padding: 3px 8px; border-radius: 4px; font-size: 0.88em; color: #d63384; }
+.markdown hr { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+.markdown strong { color: #1a1a1a; font-weight: 600; }
+.section-icon { display: inline-block; margin-right: 8px; }
+.copy-btn { padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; font-size: 0.9rem; cursor: pointer; font-weight: 600; }
+.copy-btn:hover { background: #059669; }
+.copy-btn.copied { background: #6366f1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>面试复盘 Agent</h1>
+  <p class="subtitle">上传面试录音，AI 帮你深度复盘，找到提升空间</p>
+
+  <div class="steps">
+    <div class="step active" id="step1"><span class="step-num">🎙️</span>上传音频</div>
+    <div class="step" id="step2"><span class="step-num">📝</span>语音转文字</div>
+    <div class="step" id="step3"><span class="step-num">🤖</span>AI 复盘分析</div>
+  </div>
+
+  <div class="card">
+    <div class="upload-area">
+      <div class="upload-icon">🎵</div>
+      <div class="upload-text">选择面试录音文件</div>
+      <input type="file" id="fileInput" accept="audio/*,.mp3,.wav,.m4a,.flac,.aac,.ogg,.mp4">
+      <div class="file-info">支持 MP3、WAV、M4A、FLAC、AAC 等格式，最大 100MB</div>
+    </div>
+    <div class="selected-file" id="selectedFile"></div>
+    <div class="error" id="errorMsg"></div>
+    <button class="btn" id="startBtn" onclick="startProcess()">开始复盘</button>
+  </div>
+
+  <div id="result" class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <h2 style="margin: 0;">复盘报告</h2>
+      <button class="copy-btn" id="copyBtn" onclick="copyReport()" style="display: none;">📋 复制报告</button>
+    </div>
+    <div class="toggle-transcript" id="toggleTranscript" onclick="toggleTranscript()">▶ 查看转录文字</div>
+    <div class="transcript-box" id="transcriptBox"></div>
+    <hr style="margin: 16px 0; border: none; border-top: 1px solid #eee;">
+    <div id="result-content" class="markdown"></div>
+  </div>
+</div>
+
+<script>
+var selectedFile = null;
+var reportMarkdown = '';
+
+document.getElementById('fileInput').addEventListener('change', function() {
+  var file = this.files[0];
+  if (!file) return;
+  selectedFile = file;
+  var info = document.getElementById('selectedFile');
+  info.textContent = '已选择：' + file.name + '（' + (file.size / 1024 / 1024).toFixed(1) + ' MB）';
+  info.style.display = 'block';
+  document.getElementById('errorMsg').style.display = 'none';
+});
+
+function copyReport() {
+  var btn = document.getElementById('copyBtn');
+  navigator.clipboard.writeText(reportMarkdown).then(function() {
+    btn.textContent = '✓ 已复制';
+    btn.className = 'copy-btn copied';
+    setTimeout(function() {
+      btn.textContent = '📋 复制报告';
+      btn.className = 'copy-btn';
+    }, 2000);
+  }).catch(function(err) {
+    alert('复制失败：' + err);
+  });
+}
+
+function toggleTranscript() {
+  var box = document.getElementById('transcriptBox');
+  var btn = document.getElementById('toggleTranscript');
+  if (box.style.display === 'none' || box.style.display === '') {
+    box.style.display = 'block';
+    btn.textContent = '▼ 收起转录文字';
+  } else {
+    box.style.display = 'none';
+    btn.textContent = '▶ 查看转录文字';
+  }
+}
+
+function setStep(n) {
+  var ids = ['step1', 'step2', 'step3'];
+  for (var i = 0; i < ids.length; i++) {
+    var el = document.getElementById(ids[i]);
+    if (i + 1 < n) el.className = 'step done';
+    else if (i + 1 === n) el.className = 'step active';
+    else el.className = 'step';
+  }
+}
+
+function showError(msg) {
+  var el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function renderMarkdown(text) {
+  var lines = text.split('\n');
+  var html = '';
+  var inList = false;
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+
+    // 处理标题
+    if (line.indexOf('# ') === 0 && line.indexOf('## ') !== 0) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<h1>' + line.slice(2) + '</h1>';
+    } else if (line.indexOf('## ') === 0) {
+      if (inList) { html += '</ul>'; inList = false; }
+      var title = line.slice(3);
+      var icon = '';
+      if (title.indexOf('1.') === 0 || title.indexOf('面试通过') >= 0) icon = '📊';
+      else if (title.indexOf('2.') === 0 || title.indexOf('逐题') >= 0) icon = '💡';
+      else if (title.indexOf('3.') === 0 || title.indexOf('学习') >= 0) icon = '🎯';
+      html += '<h2><span class="section-icon">' + icon + '</span>' + title + '</h2>';
+    } else if (line.indexOf('### ') === 0) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<h3>' + line.slice(4) + '</h3>';
+    } else if (line.indexOf('> ') === 0) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<blockquote>' + line.slice(2).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') + '</blockquote>';
+    } else if (line.indexOf('- ') === 0) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += '<li>' + line.slice(2).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') + '</li>';
+    } else if (/^\d+\.\s/.test(line)) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<li>' + line.replace(/^\d+\.\s/, '').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') + '</li>';
+    } else if (line === '---') {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<hr>';
+    } else if (line.trim() === '') {
+      if (inList) { html += '</ul>'; inList = false; }
+      // 空行不输出，让段落自然分隔
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      var l = line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      html += '<p>' + l + '</p>';
+    }
+  }
+  if (inList) html += '</ul>';
+  return html;
+}
+
+function startProcess() {
+  var fileInput = document.getElementById('fileInput');
+  var file = fileInput.files[0];
+  if (!file) {
+    showError('请先选择一个音频文件');
+    return;
+  }
+  selectedFile = file;
+
+  var startBtn = document.getElementById('startBtn');
+  startBtn.disabled = true;
+  startBtn.innerHTML = '<span class="spinner"></span>语音转文字中...';
+  document.getElementById('errorMsg').style.display = 'none';
+  setStep(2);
+
+  var formData = new FormData();
+  formData.append('audio', file);
+
+  fetch('/transcribe', { method: 'POST', body: formData })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) throw new Error(data.error);
+
+      var transcript = data.transcript;
+      document.getElementById('transcriptBox').textContent = transcript;
+      document.getElementById('toggleTranscript').style.display = 'block';
+      document.getElementById('result').style.display = 'block';
+
+      setStep(3);
+      startBtn.innerHTML = '<span class="spinner"></span>AI 分析中...';
+
+      return fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: transcript })
+      });
+    })
+    .then(function(res) {
+      if (!res.ok) return res.json().then(function(d) { throw new Error(d.error); });
+      var reader = res.body.getReader();
+      var decoder = new TextDecoder();
+      var fullText = '';
+      var resultEl = document.getElementById('result-content');
+
+      function read() {
+        return reader.read().then(function(result) {
+          if (result.done) {
+            startBtn.disabled = false;
+            startBtn.textContent = '重新复盘';
+            document.getElementById('step3').className = 'step done';
+            document.getElementById('copyBtn').style.display = 'block';
+            reportMarkdown = fullText;
+            return;
+          }
+          var chunk = decoder.decode(result.value);
+          var lines = chunk.split('\n');
+          for (var i = 0; i < lines.length; i++) {
+            if (lines[i].indexOf('data: ') === 0) {
+              var text = lines[i].slice(6);
+              if (text === '[DONE]') {
+                startBtn.disabled = false;
+                startBtn.textContent = '重新复盘';
+                document.getElementById('step3').className = 'step done';
+                document.getElementById('copyBtn').style.display = 'block';
+                reportMarkdown = fullText;
+                return;
+              }
+              fullText += text;
+              resultEl.innerHTML = renderMarkdown(fullText);
+            }
+          }
+          return read();
+        });
+      }
+      return read();
+    })
+    .catch(function(e) {
+      showError('出错了：' + e.message);
+      startBtn.disabled = false;
+      startBtn.textContent = '重新复盘';
+    });
+}
+</script>
+</body>
+</html>
